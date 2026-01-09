@@ -1,5 +1,4 @@
 
-
 # Python program to create color chooser dialog box
 
 # importing tkinter module
@@ -8,12 +7,26 @@ import csv
 import os
 # importing the choosecolor package
 from tkinter import colorchooser
+from tkinter.filedialog import askopenfilename
 import numpy as np
 import cv2 as cv
 from PIL import Image, ImageTk
 import matplotlib.colors as colors
 
 scale = 10
+
+def updatefile():
+    # empty the listbox
+    listBox.delete(0,'end')
+
+    file = open(f'data/save.csv', 'r')
+    csv_reader = csv.reader(file, delimiter=',')
+    if csv_reader:
+        for row in csv_reader:
+            listBox.insert(tk.END, row[0])
+    file.close()
+
+    return csv_reader != None
 
 def choose_color():
     # variable to store hexadecimal code of color
@@ -26,6 +39,10 @@ def removebox():
     if selection:
         listBox.delete(selection[0])
         updatepicture()
+
+def updatefilebox():
+    updatefile()
+    updatepicture()
 
 def addbox():
     color_code = choose_color()
@@ -85,13 +102,7 @@ listBox = tk.Listbox(root)
 listBox.pack()
 
 os.makedirs('data', exist_ok=True)
-file = open(f'data/save.csv', 'r')
-csv_reader = csv.reader(file, delimiter=',')
-if csv_reader:
-    for row in csv_reader:
-        listBox.insert(tk.END, row[0])
-
-file.close()
+should_update = updatefile()
 
 AddBtn = tk.Button(root, text="Add Color", command = lambda: addbox())
 AddBtn.pack()
@@ -99,10 +110,13 @@ AddBtn.pack()
 RmBtn = tk.Button(root, text="Remove Selected", command = lambda: removebox())
 RmBtn.pack()
 
+RmBtn = tk.Button(root, text="Update From File", command = lambda: updatefilebox())
+RmBtn.pack()
+
 close_button = tk.Button(root, text="Save & Exit", command = lambda: closewindow())
 close_button.pack()
 
-cv_im = cv.imread("data/image.png")
+cv_im = cv.imread(askopenfilename())
 
 canvas = tk.Canvas(tl, width=cv_im.shape[1] * scale, height=cv_im.shape[0] * scale, bg="#ffffff")
 canvas.pack()
@@ -114,8 +128,8 @@ img = ImageTk.PhotoImage(image=pil_img)
 canvas.create_image(0, 0, image=img, anchor=tk.NW, state="normal")
 canvas.image_reference = img
 
-if csv_reader:
+if should_update:
     updatepicture()
 
-root.geometry("250x250")
+root.geometry("250x300")
 root.mainloop()
