@@ -1,6 +1,3 @@
-
-# Python program to create color chooser dialog box
-
 # importing tkinter module
 import tkinter as tk
 import csv
@@ -12,8 +9,10 @@ import numpy as np
 import cv2 as cv
 from PIL import Image, ImageTk
 import matplotlib.colors as colors
+import colorsys
 
 scale = 10
+conversion = cv.COLOR_BGR2RGB
 
 def updatefile():
     # empty the listbox
@@ -69,24 +68,36 @@ def getkmatrix():
     if size == 0:
         return None
     km = np.empty(shape=(size, 3), dtype=np.float16)
+    km_rgb = np.empty(shape=(size, 3), dtype=np.uint8)
     for i, entry in enumerate(listBox.get(0, tk.END)):
-        rgb = colors.hex2color(entry)
-        km[i, 0] = rgb[0]
-        km[i, 1] = rgb[1]
-        km[i, 2] = rgb[2]
-    return (km * 255).astype(np.int16)
+        r, g, b = colors.hex2color(entry)
+        km_rgb[i, 0] = r * 255
+        km_rgb[i, 1] = g * 255
+        km_rgb[i, 2] = b * 255
+
+        one, two, three = r, g, b
+        
+        if conversion == cv.COLOR_BGR2HLS:
+            one, two, three = colorsys.rgb_to_hls(r, g, b)
+        elif conversion == cv.COLOR_BGR2HSV:
+            one, two, three = colorsys.rgb_to_hsv(r, g, b)
+
+        km[i, 0] = one
+        km[i, 1] = two
+        km[i, 2] = three
+    return km, km_rgb
 
 def getnearestimg():
-    km = getkmatrix()
-    rgb_img = cv.cvtColor(cv_im, cv.COLOR_BGR2RGB)
+    km, km_rgb = getkmatrix()
+    convert_img = cv.cvtColor(cv_im, conversion)
     if km is not None:
-        rgb_img16 = rgb_img.astype(np.int16)
-        rgb_mess = np.empty(shape=(rgb_img16.shape[0], rgb_img16.shape[1], km.shape[0]), dtype=np.float16)
+        convert_img16 = (convert_img / 255).astype(np.float16)
+        img_mess = np.empty(shape=(convert_img16.shape[0], convert_img16.shape[1], km.shape[0]), dtype=np.float16)
         for i in range(0, km.shape[0]):
-            rgb_mess[:,:,i] = np.linalg.norm(rgb_img16 - km[i], axis=2)
-        indices = np.argpartition(rgb_mess, 0)[:,:,0]
-        rgb_img = km[indices,:].astype(np.uint8)
-    return rgb_img
+            img_mess[:,:,i] = np.linalg.norm(convert_img16 - km[i], axis=2)
+        indices = np.argpartition(img_mess, 0)[:,:,0]
+        convert_img = km_rgb[indices,:]
+    return convert_img
 
 def updatepicture():
     u_img = getnearestimg()
